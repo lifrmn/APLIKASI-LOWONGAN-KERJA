@@ -18,6 +18,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { RolesGuard } from './modules/auth/guards/roles.guard';
 import { ApplicationsModule } from './modules/applications/applications.module';
+import { AuditLogsModule } from './modules/audit-logs/audit-logs.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { CompaniesModule } from './modules/companies/companies.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
@@ -63,8 +64,7 @@ import { UsersModule } from './modules/users/users.module';
     ChatModule,
     DashboardModule,
     ReportsModule,
-
-    // TODO: AuditLogsModule, dll.
+    AuditLogsModule,
   ],
   providers: [
     // Rate limit global

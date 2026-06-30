@@ -1,0 +1,116 @@
+name: Deploy to VPS
+
+# =====================================================
+# File: .github/workflows/deploy.yml
+# Fungsi: CI/CD ke VPS pada push branch main:
+#   1. Lint & build backend.
+#   2. Build admin React (validasi compile).
+#   3. SSH ke VPS lalu jalankan deploy.sh.
+# Secrets yang wajib disiapkan di Settings → Secrets and variables:
+#   - SSH_HOST           (mis. 1.2.3.4)
+#   - SSH_USER           (mis. deploy)
+#   - SSH_PRIVATE_KEY    (private key OpenSSH)
+#   - SSH_PORT           (default 22)
+#   - VPS_PROJECT_DIR    (mis. /opt/bursa-kerja)
+# =====================================================
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  # ---------- 1. Backend: lint + build ----------
+  build-backend:
+    name: Build Backend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Prisma generate
+        run: npx prisma generate
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Lint (jika tersedia)
+        run: npm run lint --if-present
+        continue-on-error: false
+
+      - name: Build
+        run: npm run build
+
+  # ---------- 2. Admin: build static ----------
+  build-admin:
+    name: Build Admin
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: admin
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check if admin exists
+        id: check
+        run: |
+          if [ -f package.json ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-node@v4
+        if: steps.check.outputs.exists == 'true'
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: admin/package-lock.json
+
+      - name: Install deps
+        if: steps.check.outputs.exists == 'true'
+        run: npm ci
+
+      - name: Lint
+        if: steps.check.outputs.exists == 'true'
+        run: npm run lint --if-present
+
+      - name: Build
+        if: steps.check.outputs.exists == 'true'
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL || 'https://api.example.com/api/v1' }}
+        run: npm run build
+
+  # ---------- 3. Deploy via SSH ----------
+  deploy:
+    name: Deploy to VPS
+    needs: [build-backend, build-admin]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger deploy on server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script_stop: true
+          script: |
+            set -euo pipefail
+            cd ${{ secrets.VPS_PROJECT_DIR }}
+            bash deploy/scripts/deploy.sh

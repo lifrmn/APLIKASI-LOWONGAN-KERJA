@@ -1,0 +1,13 @@
+node_modules
+dist
+coverage
+.env
+.env.*
+*.log
+uploads
+.git
+.github
+.vscode
+test
+**/*.spec.ts
+README.md
