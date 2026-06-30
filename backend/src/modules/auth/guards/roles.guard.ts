@@ -28,6 +28,10 @@ export class RolesGuard implements CanActivate {
     const user = request.user;
 
     if (!user) throw new ForbiddenException('User tidak terautentikasi');
+
+    // SUPER_ADMIN selalu lolos, apapun decorator @Roles-nya.
+    if (user.role === 'SUPER_ADMIN') return true;
+
     if (!requiredRoles.includes(user.role)) {
       throw new ForbiddenException('Anda tidak memiliki akses ke resource ini');
     }
