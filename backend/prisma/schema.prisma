@@ -1,0 +1,177 @@
+// =====================================================
+// File: backend/prisma/schema.prisma
+// Fungsi:
+//   - Skema database awal untuk Bursa Kerja Digital.
+//   - Berisi model inti tahap 1 MVP: User, Role, Permission,
+//     RolePermission, RefreshToken, OtpCode, AuditLog.
+//   - Model domain (JobSeeker, Company, Job, Application, dll)
+//     akan ditambahkan pada iterasi berikutnya.
+// =====================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- ENUM ----------
+
+/// Status aktif/nonaktif/banned untuk akun user.
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  BANNED
+  PENDING_VERIFICATION
+}
+
+/// Tujuan OTP (registrasi, reset password, verifikasi login).
+enum OtpPurpose {
+  REGISTER
+  LOGIN
+  RESET_PASSWORD
+  VERIFY_EMAIL
+  VERIFY_PHONE
+}
+
+// ---------- MODEL ----------
+
+/// users
+/// Tabel akun pengguna sistem. Setiap user memiliki tepat satu Role.
+model User {
+  id        String     @id @default(uuid())
+  email     String     @unique
+  phone     String?    @unique
+  password  String // hash bcrypt
+  fullName  String
+  avatarUrl String?
+  status    UserStatus @default(PENDING_VERIFICATION)
+
+  roleId String
+  role   Role   @relation(fields: [roleId], references: [id])
+
+  emailVerifiedAt DateTime?
+  phoneVerifiedAt DateTime?
+  lastLoginAt     DateTime?
+
+  refreshTokens RefreshToken[]
+  otpCodes      OtpCode[]
+  auditLogs     AuditLog[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime? // soft delete
+
+  @@index([roleId])
+  @@index([status])
+  @@map("users")
+}
+
+/// roles
+/// Daftar role: SUPER_ADMIN, ADMIN_DINAS, OPERATOR_KECAMATAN,
+/// OPERATOR_DESA, COMPANY, HRD, JOB_SEEKER, LEADER.
+model Role {
+  id          String  @id @default(uuid())
+  name        String  @unique // contoh: "SUPER_ADMIN"
+  description String?
+
+  users           User[]
+  rolePermissions RolePermission[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("roles")
+}
+
+/// permissions
+/// Granular permission, mis. "user.create", "job.publish".
+model Permission {
+  id          String  @id @default(uuid())
+  code        String  @unique // contoh: "user.create"
+  description String?
+
+  rolePermissions RolePermission[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("permissions")
+}
+
+/// role_permissions
+/// Tabel pivot many-to-many antara Role dan Permission.
+model RolePermission {
+  roleId       String
+  permissionId String
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+/// refresh_tokens
+/// Menyimpan hash refresh token agar dapat di-revoke per device.
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  tokenHash String   @unique
+  userAgent String?
+  ipAddress String?
+  expiresAt DateTime
+  revokedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+/// otp_codes
+/// Kode OTP untuk register/login/reset password.
+model OtpCode {
+  id        String     @id @default(uuid())
+  userId    String?
+  target    String // email atau nomor HP penerima
+  codeHash  String // disimpan dalam bentuk hash
+  purpose   OtpPurpose
+  expiresAt DateTime
+  usedAt    DateTime?
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([target, purpose])
+  @@map("otp_codes")
+}
+
+/// audit_logs
+/// Catatan aktivitas penting (login, perubahan data, dsb).
+model AuditLog {
+  id         String  @id @default(uuid())
+  userId     String?
+  action     String // contoh: "USER_LOGIN", "JOB_PUBLISH"
+  entity     String? // contoh: "Job"
+  entityId   String?
+  ipAddress  String?
+  userAgent  String?
+  metadata   Json?
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([entity, entityId])
+  @@map("audit_logs")
+}
