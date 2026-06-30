@@ -722,7 +722,7 @@ export class JobSeekersService {
    * storeFile()
    * Buat record UploadedFile dari hasil Multer.
    */
-  private storeFile(file: Express.Multer.File, category: FileCategory, uploadedBy: string) {
+  private storeFile(file: Express.Multer.File, category: FileCategory, ownerId: string) {
     return this.prisma.uploadedFile.create({
       data: {
         originalName: file.originalname,
@@ -731,7 +731,7 @@ export class JobSeekersService {
         mimeType: file.mimetype,
         size: file.size,
         category,
-        uploadedBy,
+        ownerId,
       },
     });
   }

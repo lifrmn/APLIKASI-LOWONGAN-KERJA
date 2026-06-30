@@ -456,7 +456,7 @@ export class CompaniesService {
   ) {
     await this.getManageable(id, actor);
 
-    const stored = await this.storeFile(file, FileCategory.COMPANY_DOC, actor.id);
+    const stored = await this.storeFile(file, FileCategory.COMPANY_DOCUMENT, actor.id);
     const updated = await this.prisma.company.update({
       where: { id },
       data: {
@@ -587,7 +587,7 @@ export class CompaniesService {
    * storeFile()
    * Simpan metadata file ke uploaded_files.
    */
-  private storeFile(file: Express.Multer.File, category: FileCategory, uploadedBy: string) {
+  private storeFile(file: Express.Multer.File, category: FileCategory, ownerId: string) {
     return this.prisma.uploadedFile.create({
       data: {
         originalName: file.originalname,
@@ -596,7 +596,7 @@ export class CompaniesService {
         mimeType: file.mimetype,
         size: file.size,
         category,
-        uploadedBy,
+        ownerId,
       },
     });
   }

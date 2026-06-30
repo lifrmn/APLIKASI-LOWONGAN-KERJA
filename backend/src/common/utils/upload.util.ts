@@ -32,9 +32,10 @@ export const ALLOWED_MIME = {
   CV: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
   CERTIFICATE: ['application/pdf', 'image/jpeg', 'image/png'],
   PORTFOLIO: ['application/pdf', 'image/jpeg', 'image/png', 'application/zip', 'application/x-zip-compressed'],
-  AVATAR: ['image/jpeg', 'image/png', 'image/webp'],
+  PROFILE_PHOTO: ['image/jpeg', 'image/png', 'image/webp'],
   COMPANY_LOGO: ['image/jpeg', 'image/png'],
-  COMPANY_DOC: ['application/pdf', 'image/jpeg', 'image/png'],
+  COMPANY_DOCUMENT: ['application/pdf', 'image/jpeg', 'image/png'],
+  E_KTP: ['image/jpeg', 'image/png'],
 } as const;
 
 /**

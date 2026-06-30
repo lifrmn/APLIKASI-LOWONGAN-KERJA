@@ -56,9 +56,10 @@ enum FileCategory {
   CV
   CERTIFICATE
   PORTFOLIO
-  AVATAR
+  PROFILE_PHOTO
   COMPANY_LOGO
-  COMPANY_DOC
+  COMPANY_DOCUMENT
+  E_KTP
   OTHER
 }
 
@@ -97,6 +98,10 @@ model User {
   notifications        Notification[]
   reviewedApplications Application[]              @relation("ApplicationReviewer")
   statusActions        ApplicationStatusHistory[] @relation("StatusActor")
+
+  createdChats     Chat[]            @relation("ChatCreator")
+  chatParticipants ChatParticipant[]
+  sentMessages     Message[]         @relation("MessageSender")
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -419,7 +424,7 @@ model Portfolio {
 }
 
 /// uploaded_files
-/// Metadata file yang di-upload (CV, sertifikat, portofolio, avatar, dll).
+/// Metadata file yang di-upload (CV, sertifikat, portofolio, foto, dll).
 model UploadedFile {
   id           String       @id @default(uuid())
   originalName String
@@ -428,10 +433,12 @@ model UploadedFile {
   url          String? // URL publik (opsional, bila dipasang CDN)
   mimeType     String
   size         Int // dalam byte
+  extension    String? // mis. "pdf", "png"
   category     FileCategory @default(OTHER)
+  isPublic     Boolean      @default(false)
 
-  uploadedBy String?
-  uploader   User?   @relation(fields: [uploadedBy], references: [id], onDelete: SetNull)
+  ownerId String?
+  owner   User?   @relation(fields: [ownerId], references: [id], onDelete: SetNull)
 
   jobSeekersCv    JobSeeker[]   @relation("JobSeekerCv")
   jobSeekersPhoto JobSeeker[]   @relation("JobSeekerPhoto")
@@ -440,12 +447,16 @@ model UploadedFile {
   companyLogos    Company[]     @relation("CompanyLogo")
   companyLegals   Company[]     @relation("CompanyLegalDoc")
   applicationCvs  Application[] @relation("ApplicationCv")
+  messageFiles    Message[]     @relation("MessageFile")
 
   createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  @@index([uploadedBy])
+  @@index([ownerId])
   @@index([category])
+  @@index([isPublic])
+  @@index([deletedAt])
   @@map("uploaded_files")
 }
 
@@ -637,6 +648,7 @@ model Job {
 
   skills       JobSkill[]
   applications Application[]
+  chats        Chat[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -685,10 +697,13 @@ enum ApplicationStatus {
 
 /// Tipe notifikasi (digunakan oleh banyak modul).
 enum NotificationType {
-  APPLICATION_STATUS
-  INTERVIEW_SCHEDULE
-  CHAT_MESSAGE
   SYSTEM
+  APPLICATION_STATUS
+  INTERVIEW
+  COMPANY_VERIFICATION
+  JOB_RECOMMENDATION
+  CHAT_MESSAGE
+  ANNOUNCEMENT
 }
 
 /// applications
@@ -715,6 +730,7 @@ model Application {
 
   statusHistories ApplicationStatusHistory[]
   interviews      Interview[]
+  chats           Chat[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -770,21 +786,124 @@ model Interview {
 }
 
 /// notifications
-/// Notifikasi untuk user (dipakai oleh banyak modul: applications, interviews, chat).
+/// Notifikasi untuk user (dipakai oleh banyak modul: applications, interviews, chat, dinas).
 model Notification {
   id     String @id @default(uuid())
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  type  NotificationType
-  title String
-  body  String?
-  data  Json?
+  type    NotificationType
+  title   String
+  message String?
+  data    Json?
 
-  readAt    DateTime?
+  isRead Boolean   @default(false)
+  readAt DateTime?
+
   createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
-  @@index([userId, readAt])
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
   @@index([type])
+  @@index([deletedAt])
   @@map("notifications")
+}
+
+// =====================================================
+// CHAT DOMAIN
+// =====================================================
+
+/// Jenis chat: PRIVATE = antar 2 user; APPLICATION = chat terkait
+/// lamaran; JOB = chat terkait lowongan; SUPPORT = chat ke admin.
+enum ChatType {
+  PRIVATE
+  APPLICATION
+  JOB
+  SUPPORT
+}
+
+/// Tipe pesan.
+enum MessageType {
+  TEXT
+  FILE
+  IMAGE
+}
+
+/// chats
+/// Percakapan multi-peserta. Bisa terkait Job dan/atau Application.
+model Chat {
+  id    String   @id @default(uuid())
+  title String?
+  type  ChatType
+
+  jobId String?
+  job   Job?    @relation(fields: [jobId], references: [id], onDelete: SetNull)
+
+  applicationId String?
+  application   Application? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+
+  createdById String
+  createdBy   User   @relation("ChatCreator", fields: [createdById], references: [id], onDelete: Cascade)
+
+  participants ChatParticipant[]
+  messages     Message[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([type])
+  @@index([jobId])
+  @@index([applicationId])
+  @@index([createdById])
+  @@index([deletedAt])
+  @@map("chats")
+}
+
+/// chat_participants
+/// Pivot user di sebuah chat + jejak baca terakhir (lastReadAt).
+model ChatParticipant {
+  id     String @id @default(uuid())
+  chatId String
+  userId String
+
+  joinedAt   DateTime  @default(now())
+  lastReadAt DateTime?
+
+  chat Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([chatId, userId])
+  @@index([userId])
+  @@map("chat_participants")
+}
+
+/// messages
+/// Pesan di dalam chat. Bisa berisi text, file, atau image.
+model Message {
+  id       String @id @default(uuid())
+  chatId   String
+  senderId String
+
+  content     String?
+  fileId      String?
+  messageType MessageType @default(TEXT)
+
+  isRead Boolean   @default(false)
+  readAt DateTime?
+
+  chat   Chat          @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  sender User          @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  file   UploadedFile? @relation("MessageFile", fields: [fileId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([chatId, createdAt])
+  @@index([senderId])
+  @@index([deletedAt])
+  @@map("messages")
 }

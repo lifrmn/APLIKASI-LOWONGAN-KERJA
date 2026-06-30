@@ -215,7 +215,7 @@ export class CompaniesController {
       'file',
       multerOptions({
         subdir: 'company-docs',
-        allowedMime: ALLOWED_MIME.COMPANY_DOC,
+        allowedMime: ALLOWED_MIME.COMPANY_DOCUMENT,
         maxBytes: MB(5),
       }),
     ),

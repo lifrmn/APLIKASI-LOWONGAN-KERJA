@@ -18,9 +18,12 @@ import { AuthModule } from './modules/auth/auth.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { RolesGuard } from './modules/auth/guards/roles.guard';
 import { ApplicationsModule } from './modules/applications/applications.module';
+import { ChatModule } from './modules/chat/chat.module';
 import { CompaniesModule } from './modules/companies/companies.module';
+import { FilesModule } from './modules/files/files.module';
 import { JobSeekersModule } from './modules/job-seekers/job-seekers.module';
 import { JobsModule } from './modules/jobs/jobs.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 import { PermissionsModule } from './modules/permissions/permissions.module';
 import { RolesModule } from './modules/roles/roles.module';
 import { UsersModule } from './modules/users/users.module';
@@ -53,8 +56,11 @@ import { UsersModule } from './modules/users/users.module';
     CompaniesModule,
     JobsModule,
     ApplicationsModule,
+    FilesModule,
+    NotificationsModule,
+    ChatModule,
 
-    // TODO: FilesModule, DashboardModule, AuditLogsModule, dll.
+    // TODO: DashboardModule, AuditLogsModule, dll.
   ],
   providers: [
     // Rate limit global

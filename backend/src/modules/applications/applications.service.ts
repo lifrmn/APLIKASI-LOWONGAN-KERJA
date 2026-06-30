@@ -308,7 +308,7 @@ export class ApplicationsService {
           userId: jobSeeker.user.id,
           type: NotificationType.APPLICATION_STATUS,
           title: 'Lamaran terkirim',
-          body: `Lamaran untuk lowongan "${job.title}" telah berhasil dikirim.`,
+          message: `Lamaran untuk lowongan "${job.title}" telah berhasil dikirim.`,
           data: { applicationId: app.id, jobId: job.id, status: ApplicationStatus.APPLIED },
         },
       });
@@ -407,10 +407,10 @@ export class ApplicationsService {
             userId: jobSeeker.userId,
             type:
               dto.status === ApplicationStatus.INTERVIEW
-                ? NotificationType.INTERVIEW_SCHEDULE
+                ? NotificationType.INTERVIEW
                 : NotificationType.APPLICATION_STATUS,
             title: this.statusNotificationTitle(dto.status),
-            body: `Status lamaran "${job?.title ?? ''}" diperbarui menjadi ${dto.status}.`,
+            message: `Status lamaran "${job?.title ?? ''}" diperbarui menjadi ${dto.status}.`,
             data: { applicationId: id, status: dto.status },
           },
         });
@@ -504,7 +504,7 @@ export class ApplicationsService {
           userId: app.jobSeeker.userId,
           type: NotificationType.APPLICATION_STATUS,
           title: 'Lamaran dibatalkan',
-          body: `Lamaran untuk "${app.job.title}" telah dibatalkan.`,
+          message: `Lamaran untuk "${app.job.title}" telah dibatalkan.`,
           data: { applicationId: id, status: ApplicationStatus.CANCELLED },
         },
       });
