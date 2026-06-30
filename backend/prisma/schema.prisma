@@ -911,3 +911,220 @@ model Message {
   @@index([deletedAt])
   @@map("messages")
 }
+
+// =====================================================
+// REGION / WILAYAH (Indonesia 4-level hierarchy)
+// FK dari JobSeeker/Company/Job ke region tabel ini tetap
+// dipertahankan sebagai String biasa untuk MVP agar tidak
+// memecah service yang sudah ada. Aktifkan @relation pada
+// iterasi berikutnya setelah seed wilayah BPS dijalankan.
+// =====================================================
+
+model Province {
+  id        String    @id // kode BPS 2 digit, mis. "76"
+  name      String
+  regencies Regency[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([name])
+  @@map("provinces")
+}
+
+model Regency {
+  id         String @id // kode BPS 4 digit, mis. "7604"
+  provinceId String
+  name       String
+
+  province  Province   @relation(fields: [provinceId], references: [id], onDelete: Restrict)
+  districts District[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([provinceId])
+  @@index([name])
+  @@map("regencies")
+}
+
+model District {
+  id        String @id // kode BPS 7 digit
+  regencyId String
+  name      String
+
+  regency  Regency   @relation(fields: [regencyId], references: [id], onDelete: Restrict)
+  villages Village[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([regencyId])
+  @@index([name])
+  @@map("districts")
+}
+
+model Village {
+  id         String @id // kode BPS 10 digit
+  districtId String
+  name       String
+
+  district District @relation(fields: [districtId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([districtId])
+  @@index([name])
+  @@map("villages")
+}
+
+// =====================================================
+// AI MODULE (rule-based, tanpa API eksternal)
+// =====================================================
+
+/// Kategori CV scoring rule-based.
+enum CvScoreCategory {
+  PERLU_DILENGKAPI
+  CUKUP
+  BAIK
+  SANGAT_BAIK
+}
+
+/// ai_cv_scores
+/// Histori penilaian CV/profil pencari kerja oleh AI rule-based.
+model AiCvScore {
+  id              String          @id @default(uuid())
+  jobSeekerId     String
+  score           Int // 0..100
+  category        CvScoreCategory
+  strengths       Json?
+  weaknesses      Json?
+  recommendations Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([jobSeekerId])
+  @@index([category])
+  @@index([createdAt])
+  @@map("ai_cv_scores")
+}
+
+/// ai_job_recommendations
+/// Cache hasil rule-based job matching per (jobSeeker, job).
+model AiJobRecommendation {
+  id          String @id @default(uuid())
+  jobSeekerId String
+  jobId       String
+  matchScore  Int // 0..100
+  reasons     Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([jobSeekerId, jobId])
+  @@index([jobSeekerId])
+  @@index([jobId])
+  @@index([matchScore])
+  @@map("ai_job_recommendations")
+}
+
+/// resume_parses
+/// Hasil parsing teks CV (regex/keyword based) untuk AI Tahap 3.
+model ResumeParse {
+  id          String  @id @default(uuid())
+  jobSeekerId String?
+  rawText     String  @db.Text
+  parsedData  Json
+
+  createdAt DateTime @default(now())
+
+  @@index([jobSeekerId])
+  @@index([createdAt])
+  @@map("resume_parses")
+}
+
+// =====================================================
+// OCR E-KTP MODULE
+// =====================================================
+
+enum OcrStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+/// ocr_ektp_results
+/// Hasil OCR e-KTP (mock/Tesseract). Status default PENDING dan harus
+/// diverifikasi admin manual. NIK tidak boleh ditampilkan penuh kecuali
+/// kepada pemilik atau admin dengan permission sensitive.identity.read.
+model OcrEktpResult {
+  id     String  @id @default(uuid())
+  userId String
+  fileId String?
+
+  nik           String? // disimpan apa adanya, MASKING dilakukan di response DTO
+  fullName      String?
+  birthPlace    String?
+  birthDate     DateTime?
+  gender        Gender?
+  address       String?
+  rtRw          String?
+  village       String?
+  district      String?
+  religion      String?
+  maritalStatus String?
+  occupation    String?
+  nationality   String?
+
+  rawText         String?   @db.Text
+  confidence      Float?
+  status          OcrStatus @default(PENDING)
+  verifiedAt      DateTime?
+  verifiedById    String?
+  rejectionReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([nik])
+  @@map("ocr_ektp_results")
+}
+
+// =====================================================
+// SETTINGS (key/value)
+// =====================================================
+
+model Setting {
+  id          String  @id @default(uuid())
+  key         String  @unique
+  value       Json
+  description String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("settings")
+}
+
+// =====================================================
+// INTERVIEW STATUS ENUM (refinement untuk Interview.status)
+// Field Interview.status masih String agar tidak memecah service
+// existing — akan dimigrasikan ke enum InterviewStatus di iterasi
+// berikutnya. Nilai yang VALID: SCHEDULED, DONE, CANCELLED, RESCHEDULED.
+// =====================================================
+enum InterviewStatus {
+  SCHEDULED
+  DONE
+  CANCELLED
+  RESCHEDULED
+}
+
+/// Status sesi login (untuk LoginHistory ke depan).
+/// LoginHistory.success Boolean tetap dipertahankan untuk MVP.
+enum LoginStatus {
+  SUCCESS
+  FAILED
+}
