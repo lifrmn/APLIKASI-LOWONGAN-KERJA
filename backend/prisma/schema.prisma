@@ -36,6 +36,32 @@ enum OtpPurpose {
   VERIFY_PHONE
 }
 
+/// Jenis kelamin (untuk profil pencari kerja).
+enum Gender {
+  MALE
+  FEMALE
+}
+
+/// Status kerja pencari kerja saat ini.
+enum WorkStatus {
+  UNEMPLOYED
+  EMPLOYED
+  FREELANCER
+  STUDENT
+  FRESH_GRADUATE
+}
+
+/// Kategori file yang di-upload (dipakai untuk filter & subfolder).
+enum FileCategory {
+  CV
+  CERTIFICATE
+  PORTFOLIO
+  AVATAR
+  COMPANY_LOGO
+  COMPANY_DOC
+  OTHER
+}
+
 // ---------- MODEL ----------
 
 /// users
@@ -57,10 +83,16 @@ model User {
   phoneVerifiedAt DateTime?
   lastLoginAt     DateTime?
 
-  refreshTokens  RefreshToken[]
-  otpCodes       OtpCode[]
-  auditLogs      AuditLog[]
-  loginHistories LoginHistory[]
+  refreshTokens    RefreshToken[]
+  otpCodes         OtpCode[]
+  auditLogs        AuditLog[]
+  loginHistories   LoginHistory[]
+  uploadedFiles    UploadedFile[]
+  jobSeekerProfile JobSeeker?
+
+  ownedCompany       Company?              @relation("CompanyOwner")
+  companyMemberships CompanyHrd[]
+  verifiedCompanies  CompanyVerification[] @relation("VerifierUser")
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -126,9 +158,9 @@ model RolePermission {
 /// refresh_tokens
 /// Menyimpan hash refresh token agar dapat di-revoke per device.
 model RefreshToken {
-  id        String   @id @default(uuid())
+  id        String    @id @default(uuid())
   userId    String
-  tokenHash String   @unique
+  tokenHash String    @unique
   userAgent String?
   ipAddress String?
   expiresAt DateTime
@@ -164,14 +196,14 @@ model OtpCode {
 /// audit_logs
 /// Catatan aktivitas penting (login, perubahan data, dsb).
 model AuditLog {
-  id         String  @id @default(uuid())
-  userId     String?
-  action     String // contoh: "USER_LOGIN", "JOB_PUBLISH"
-  entity     String? // contoh: "Job"
-  entityId   String?
-  ipAddress  String?
-  userAgent  String?
-  metadata   Json?
+  id        String  @id @default(uuid())
+  userId    String?
+  action    String // contoh: "USER_LOGIN", "JOB_PUBLISH"
+  entity    String? // contoh: "Job"
+  entityId  String?
+  ipAddress String?
+  userAgent String?
+  metadata  Json?
 
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
@@ -200,4 +232,431 @@ model LoginHistory {
   @@index([userId])
   @@index([createdAt])
   @@map("login_histories")
+}
+
+// =====================================================
+// JOB SEEKER DOMAIN
+// =====================================================
+
+/// job_seekers
+/// Profil pencari kerja (1-1 dengan User).
+/// Field provinceId/regencyId/districtId/villageId disimpan sebagai String
+/// (relasi FK akan dipasang saat RegionsModule dibuat).
+model JobSeeker {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  nik        String?   @unique
+  fullName   String
+  birthPlace String?
+  birthDate  DateTime?
+  gender     Gender?
+  phone      String?
+  address    String?
+
+  provinceId String?
+  regencyId  String?
+  districtId String?
+  villageId  String?
+
+  lastEducation  String?
+  major          String?
+  graduationYear Int?
+  workStatus     WorkStatus @default(UNEMPLOYED)
+  expectedSalary Decimal?   @db.Decimal(15, 2)
+  about          String?
+
+  cvFileId String?
+  cvFile   UploadedFile? @relation("JobSeekerCv", fields: [cvFileId], references: [id], onDelete: SetNull)
+
+  profilePhotoFileId String?
+  profilePhotoFile   UploadedFile? @relation("JobSeekerPhoto", fields: [profilePhotoFileId], references: [id], onDelete: SetNull)
+
+  educations   EducationHistory[]
+  experiences  WorkExperience[]
+  skills       JobSeekerSkill[]
+  certificates Certificate[]
+  portfolios   Portfolio[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([workStatus])
+  @@index([provinceId, regencyId, districtId, villageId])
+  @@index([deletedAt])
+  @@map("job_seekers")
+}
+
+/// education_histories
+/// Riwayat pendidikan pencari kerja.
+model EducationHistory {
+  id          String    @id @default(uuid())
+  jobSeekerId String
+  jobSeeker   JobSeeker @relation(fields: [jobSeekerId], references: [id], onDelete: Cascade)
+
+  level       String // SD, SMP, SMA, D3, S1, S2, S3
+  institution String
+  major       String?
+  startYear   Int
+  endYear     Int?
+  gpa         Decimal? @db.Decimal(4, 2)
+  description String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([jobSeekerId])
+  @@map("education_histories")
+}
+
+/// work_experiences
+/// Riwayat pengalaman kerja pencari kerja.
+model WorkExperience {
+  id          String    @id @default(uuid())
+  jobSeekerId String
+  jobSeeker   JobSeeker @relation(fields: [jobSeekerId], references: [id], onDelete: Cascade)
+
+  company     String
+  position    String
+  startDate   DateTime
+  endDate     DateTime?
+  isCurrent   Boolean   @default(false)
+  description String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([jobSeekerId])
+  @@map("work_experiences")
+}
+
+/// skills
+/// Master skill (TypeScript, MS Excel, dll). Akan dipakai banyak modul.
+model Skill {
+  id       String  @id @default(uuid())
+  name     String  @unique
+  category String?
+
+  jobSeekers JobSeekerSkill[]
+  jobs       JobSkill[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([deletedAt])
+  @@map("skills")
+}
+
+/// job_seeker_skills
+/// Pivot many-to-many JobSeeker <-> Skill + metadata level/years.
+model JobSeekerSkill {
+  jobSeekerId String
+  skillId     String
+
+  level             String? // BEGINNER | INTERMEDIATE | ADVANCED | EXPERT
+  yearsOfExperience Int?
+
+  jobSeeker JobSeeker @relation(fields: [jobSeekerId], references: [id], onDelete: Cascade)
+  skill     Skill     @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@id([jobSeekerId, skillId])
+  @@map("job_seeker_skills")
+}
+
+/// certificates
+/// Sertifikat milik pencari kerja (PDF/JPG/PNG).
+model Certificate {
+  id          String    @id @default(uuid())
+  jobSeekerId String
+  jobSeeker   JobSeeker @relation(fields: [jobSeekerId], references: [id], onDelete: Cascade)
+
+  name       String
+  issuer     String?
+  issueDate  DateTime?
+  expiryDate DateTime?
+
+  fileId String?
+  file   UploadedFile? @relation(fields: [fileId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([jobSeekerId])
+  @@map("certificates")
+}
+
+/// portfolios
+/// Portofolio pencari kerja (file dan/atau link).
+model Portfolio {
+  id          String    @id @default(uuid())
+  jobSeekerId String
+  jobSeeker   JobSeeker @relation(fields: [jobSeekerId], references: [id], onDelete: Cascade)
+
+  title       String
+  description String?
+  link        String?
+
+  fileId String?
+  file   UploadedFile? @relation(fields: [fileId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([jobSeekerId])
+  @@map("portfolios")
+}
+
+/// uploaded_files
+/// Metadata file yang di-upload (CV, sertifikat, portofolio, avatar, dll).
+model UploadedFile {
+  id           String       @id @default(uuid())
+  originalName String
+  filename     String // nama file aktual di disk/object storage
+  path         String // path absolut/relatif file
+  url          String? // URL publik (opsional, bila dipasang CDN)
+  mimeType     String
+  size         Int // dalam byte
+  category     FileCategory @default(OTHER)
+
+  uploadedBy String?
+  uploader   User?   @relation(fields: [uploadedBy], references: [id], onDelete: SetNull)
+
+  jobSeekersCv    JobSeeker[]   @relation("JobSeekerCv")
+  jobSeekersPhoto JobSeeker[]   @relation("JobSeekerPhoto")
+  certificates    Certificate[]
+  portfolios      Portfolio[]
+  companyLogos    Company[]     @relation("CompanyLogo")
+  companyLegals   Company[]     @relation("CompanyLegalDoc")
+
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
+
+  @@index([uploadedBy])
+  @@index([category])
+  @@map("uploaded_files")
+}
+
+// =====================================================
+// COMPANY DOMAIN
+// =====================================================
+
+/// Status verifikasi perusahaan oleh admin.
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+/// companies
+/// Profil perusahaan. Setiap perusahaan dimiliki oleh tepat 1 user
+/// dengan role COMPANY (owner). HRD diasosiasikan via CompanyHrd.
+model Company {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation("CompanyOwner", fields: [userId], references: [id], onDelete: Cascade)
+
+  companyName   String
+  businessField String?
+  description   String?
+  email         String?
+  phone         String?
+  website       String?
+  address       String?
+
+  provinceId String?
+  regencyId  String?
+  districtId String?
+  villageId  String?
+
+  latitude  Decimal? @db.Decimal(10, 7)
+  longitude Decimal? @db.Decimal(10, 7)
+
+  logoFileId String?
+  logoFile   UploadedFile? @relation("CompanyLogo", fields: [logoFileId], references: [id], onDelete: SetNull)
+
+  legalDocumentFileId String?
+  legalDocumentFile   UploadedFile? @relation("CompanyLegalDoc", fields: [legalDocumentFileId], references: [id], onDelete: SetNull)
+
+  verificationStatus VerificationStatus @default(PENDING)
+  verificationNote   String?
+  verifiedAt         DateTime?
+  verifiedById       String?
+
+  isActive Boolean @default(true)
+
+  hrds          CompanyHrd[]
+  verifications CompanyVerification[]
+  jobs          Job[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([verificationStatus])
+  @@index([isActive])
+  @@index([provinceId, regencyId, districtId, villageId])
+  @@index([deletedAt])
+  @@map("companies")
+}
+
+/// company_verifications
+/// Riwayat tindakan verifikasi/reject perusahaan oleh admin.
+model CompanyVerification {
+  id        String             @id @default(uuid())
+  companyId String
+  company   Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  status    VerificationStatus
+  note      String?
+
+  actorId String?
+  actor   User?   @relation("VerifierUser", fields: [actorId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([companyId])
+  @@index([status])
+  @@map("company_verifications")
+}
+
+/// company_hrds
+/// Daftar HRD yang terdaftar di sebuah perusahaan (User <-> Company).
+model CompanyHrd {
+  companyId String
+  userId    String
+
+  position String?
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@id([companyId, userId])
+  @@index([userId])
+  @@map("company_hrds")
+}
+
+// =====================================================
+// JOB VACANCY DOMAIN
+// =====================================================
+
+/// Jenis hubungan kerja.
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  INTERNSHIP
+  FREELANCE
+}
+
+/// Mode tempat kerja.
+enum WorkType {
+  ONSITE
+  REMOTE
+  HYBRID
+}
+
+/// Status lowongan.
+enum JobStatus {
+  DRAFT
+  PUBLISHED
+  CLOSED
+  EXPIRED
+}
+
+/// job_categories
+/// Kategori pekerjaan (mis. IT, Konstruksi, Pendidikan).
+model JobCategory {
+  id          String  @id @default(uuid())
+  name        String  @unique
+  slug        String  @unique
+  description String?
+
+  jobs Job[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([deletedAt])
+  @@map("job_categories")
+}
+
+/// jobs
+/// Lowongan kerja yang dipublikasikan perusahaan.
+model Job {
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  title          String
+  description    String
+  requirement    String?
+  responsibility String?
+
+  jobCategoryId String?
+  jobCategory   JobCategory? @relation(fields: [jobCategoryId], references: [id], onDelete: SetNull)
+
+  employmentType EmploymentType
+  workType       WorkType
+
+  minimumEducation  String?
+  minimumExperience Int? // dalam tahun
+
+  salaryMin     Decimal? @db.Decimal(15, 2)
+  salaryMax     Decimal? @db.Decimal(15, 2)
+  salaryVisible Boolean  @default(true)
+
+  provinceId String?
+  regencyId  String?
+  districtId String?
+  villageId  String?
+  address    String?
+  latitude   Decimal? @db.Decimal(10, 7)
+  longitude  Decimal? @db.Decimal(10, 7)
+
+  deadline DateTime?
+  quota    Int?
+
+  status      JobStatus @default(DRAFT)
+  publishedAt DateTime?
+  closedAt    DateTime?
+
+  skills JobSkill[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([companyId])
+  @@index([status])
+  @@index([deadline])
+  @@index([deletedAt])
+  @@index([provinceId, regencyId, districtId, villageId])
+  @@map("jobs")
+}
+
+/// job_skills
+/// Pivot many-to-many Job <-> Skill + metadata isRequired/level.
+model JobSkill {
+  jobId   String
+  skillId String
+
+  isRequired Boolean @default(true)
+  level      String? // BEGINNER | INTERMEDIATE | ADVANCED | EXPERT
+
+  job   Job   @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  skill Skill @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@id([jobId, skillId])
+  @@map("job_skills")
 }

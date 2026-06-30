@@ -17,6 +17,12 @@ import { DatabaseModule } from './database/database.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { RolesGuard } from './modules/auth/guards/roles.guard';
+import { CompaniesModule } from './modules/companies/companies.module';
+import { JobSeekersModule } from './modules/job-seekers/job-seekers.module';
+import { JobsModule } from './modules/jobs/jobs.module';
+import { PermissionsModule } from './modules/permissions/permissions.module';
+import { RolesModule } from './modules/roles/roles.module';
+import { UsersModule } from './modules/users/users.module';
 
 @Module({
   imports: [
@@ -39,10 +45,15 @@ import { RolesGuard } from './modules/auth/guards/roles.guard';
 
     // Modul fitur tahap 1
     AuthModule,
+    UsersModule,
+    RolesModule,
+    PermissionsModule,
+    JobSeekersModule,
+    CompaniesModule,
+    JobsModule,
 
-    // TODO: UsersModule, RolesModule, PermissionsModule, JobSeekersModule,
-    // CompaniesModule, JobsModule, ApplicationsModule, FilesModule,
-    // DashboardModule, AuditLogsModule, dll. ditambahkan bertahap.
+    // TODO: ApplicationsModule, FilesModule,
+    // DashboardModule, AuditLogsModule, dll.
   ],
   providers: [
     // Rate limit global
