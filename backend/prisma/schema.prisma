@@ -205,14 +205,16 @@ model OtpCode {
 /// audit_logs
 /// Catatan aktivitas penting (login, perubahan data, dsb).
 model AuditLog {
-  id        String  @id @default(uuid())
-  userId    String?
-  action    String // contoh: "USER_LOGIN", "JOB_PUBLISH"
-  entity    String? // contoh: "Job"
-  entityId  String?
-  ipAddress String?
-  userAgent String?
-  metadata  Json?
+  id          String  @id @default(uuid())
+  userId      String?
+  action      String // contoh: "USER_LOGIN", "JOB_PUBLISH"
+  module      String? // contoh: "AUTH", "JOBS"
+  description String? // ringkasan human-readable
+  entity      String? // contoh: "Job"
+  entityId    String?
+  ipAddress   String?
+  userAgent   String?
+  metadata    Json?
 
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
@@ -220,7 +222,9 @@ model AuditLog {
 
   @@index([userId])
   @@index([action])
+  @@index([module])
   @@index([entity, entityId])
+  @@index([createdAt])
   @@map("audit_logs")
 }
 

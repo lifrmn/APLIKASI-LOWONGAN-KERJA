@@ -30,7 +30,7 @@ interface DateRange {
   end?: Date;
 }
 
-interface MonthlyBucket {
+export interface MonthlyBucket {
   month: string; // ISO date awal bulan
   count: number;
 }

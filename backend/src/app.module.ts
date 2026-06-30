@@ -20,11 +20,13 @@ import { RolesGuard } from './modules/auth/guards/roles.guard';
 import { ApplicationsModule } from './modules/applications/applications.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { CompaniesModule } from './modules/companies/companies.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { FilesModule } from './modules/files/files.module';
 import { JobSeekersModule } from './modules/job-seekers/job-seekers.module';
 import { JobsModule } from './modules/jobs/jobs.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { PermissionsModule } from './modules/permissions/permissions.module';
+import { ReportsModule } from './modules/reports/reports.module';
 import { RolesModule } from './modules/roles/roles.module';
 import { UsersModule } from './modules/users/users.module';
 
@@ -59,8 +61,10 @@ import { UsersModule } from './modules/users/users.module';
     FilesModule,
     NotificationsModule,
     ChatModule,
+    DashboardModule,
+    ReportsModule,
 
-    // TODO: DashboardModule, AuditLogsModule, dll.
+    // TODO: AuditLogsModule, dll.
   ],
   providers: [
     // Rate limit global
