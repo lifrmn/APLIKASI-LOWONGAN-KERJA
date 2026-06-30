@@ -94,6 +94,10 @@ model User {
   companyMemberships CompanyHrd[]
   verifiedCompanies  CompanyVerification[] @relation("VerifierUser")
 
+  notifications        Notification[]
+  reviewedApplications Application[]              @relation("ApplicationReviewer")
+  statusActions        ApplicationStatusHistory[] @relation("StatusActor")
+
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime? // soft delete
@@ -278,6 +282,7 @@ model JobSeeker {
   skills       JobSeekerSkill[]
   certificates Certificate[]
   portfolios   Portfolio[]
+  applications Application[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -434,6 +439,7 @@ model UploadedFile {
   portfolios      Portfolio[]
   companyLogos    Company[]     @relation("CompanyLogo")
   companyLegals   Company[]     @relation("CompanyLegalDoc")
+  applicationCvs  Application[] @relation("ApplicationCv")
 
   createdAt DateTime  @default(now())
   deletedAt DateTime?
@@ -629,7 +635,8 @@ model Job {
   publishedAt DateTime?
   closedAt    DateTime?
 
-  skills JobSkill[]
+  skills       JobSkill[]
+  applications Application[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -659,4 +666,125 @@ model JobSkill {
 
   @@id([jobId, skillId])
   @@map("job_skills")
+}
+
+// =====================================================
+// APPLICATION DOMAIN
+// =====================================================
+
+/// Status lamaran.
+enum ApplicationStatus {
+  APPLIED
+  REVIEWED
+  SHORTLISTED
+  INTERVIEW
+  ACCEPTED
+  REJECTED
+  CANCELLED
+}
+
+/// Tipe notifikasi (digunakan oleh banyak modul).
+enum NotificationType {
+  APPLICATION_STATUS
+  INTERVIEW_SCHEDULE
+  CHAT_MESSAGE
+  SYSTEM
+}
+
+/// applications
+/// Lamaran kerja dari pencari kerja ke lowongan tertentu.
+/// Anti-duplicate dijaga di level service (mempertimbangkan deletedAt).
+model Application {
+  id          String    @id @default(uuid())
+  jobId       String
+  job         Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  jobSeekerId String
+  jobSeeker   JobSeeker @relation(fields: [jobSeekerId], references: [id], onDelete: Cascade)
+
+  coverLetter String?
+  cvFileId    String?
+  cvFile      UploadedFile? @relation("ApplicationCv", fields: [cvFileId], references: [id], onDelete: SetNull)
+
+  status ApplicationStatus @default(APPLIED)
+  note   String? // catatan internal reviewer
+
+  appliedAt    DateTime  @default(now())
+  reviewedAt   DateTime?
+  reviewedById String?
+  reviewedBy   User?     @relation("ApplicationReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  statusHistories ApplicationStatusHistory[]
+  interviews      Interview[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([jobId])
+  @@index([jobSeekerId])
+  @@index([status])
+  @@index([appliedAt])
+  @@index([deletedAt])
+  @@map("applications")
+}
+
+/// application_status_histories
+/// Riwayat perubahan status sebuah lamaran.
+model ApplicationStatusHistory {
+  id            String      @id @default(uuid())
+  applicationId String
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  fromStatus ApplicationStatus?
+  toStatus   ApplicationStatus
+  note       String?
+
+  actorId String?
+  actor   User?   @relation("StatusActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([applicationId])
+  @@map("application_status_histories")
+}
+
+/// interviews
+/// Jadwal interview sederhana (model dasar; akan diperluas di InterviewsModule).
+model Interview {
+  id            String      @id @default(uuid())
+  applicationId String
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  scheduledAt DateTime
+  location    String?
+  meetingLink String?
+  notes       String?
+  status      String   @default("SCHEDULED") // SCHEDULED | DONE | CANCELLED
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([applicationId])
+  @@index([scheduledAt])
+  @@map("interviews")
+}
+
+/// notifications
+/// Notifikasi untuk user (dipakai oleh banyak modul: applications, interviews, chat).
+model Notification {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type  NotificationType
+  title String
+  body  String?
+  data  Json?
+
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, readAt])
+  @@index([type])
+  @@map("notifications")
 }

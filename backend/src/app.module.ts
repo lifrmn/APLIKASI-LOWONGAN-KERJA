@@ -17,6 +17,7 @@ import { DatabaseModule } from './database/database.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { RolesGuard } from './modules/auth/guards/roles.guard';
+import { ApplicationsModule } from './modules/applications/applications.module';
 import { CompaniesModule } from './modules/companies/companies.module';
 import { JobSeekersModule } from './modules/job-seekers/job-seekers.module';
 import { JobsModule } from './modules/jobs/jobs.module';
@@ -51,9 +52,9 @@ import { UsersModule } from './modules/users/users.module';
     JobSeekersModule,
     CompaniesModule,
     JobsModule,
+    ApplicationsModule,
 
-    // TODO: ApplicationsModule, FilesModule,
-    // DashboardModule, AuditLogsModule, dll.
+    // TODO: FilesModule, DashboardModule, AuditLogsModule, dll.
   ],
   providers: [
     // Rate limit global
