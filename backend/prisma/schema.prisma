@@ -43,6 +43,7 @@ enum OtpPurpose {
 model User {
   id        String     @id @default(uuid())
   email     String     @unique
+  username  String?    @unique
   phone     String?    @unique
   password  String // hash bcrypt
   fullName  String
@@ -56,9 +57,10 @@ model User {
   phoneVerifiedAt DateTime?
   lastLoginAt     DateTime?
 
-  refreshTokens RefreshToken[]
-  otpCodes      OtpCode[]
-  auditLogs     AuditLog[]
+  refreshTokens  RefreshToken[]
+  otpCodes       OtpCode[]
+  auditLogs      AuditLog[]
+  loginHistories LoginHistory[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -66,6 +68,7 @@ model User {
 
   @@index([roleId])
   @@index([status])
+  @@index([deletedAt])
   @@map("users")
 }
 
@@ -80,9 +83,11 @@ model Role {
   users           User[]
   rolePermissions RolePermission[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
+  @@index([deletedAt])
   @@map("roles")
 }
 
@@ -95,9 +100,11 @@ model Permission {
 
   rolePermissions RolePermission[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
+  @@index([deletedAt])
   @@map("permissions")
 }
 
@@ -174,4 +181,23 @@ model AuditLog {
   @@index([action])
   @@index([entity, entityId])
   @@map("audit_logs")
+}
+
+/// login_histories
+/// Riwayat percobaan login user, baik sukses maupun gagal.
+model LoginHistory {
+  id        String  @id @default(uuid())
+  userId    String
+  ipAddress String?
+  userAgent String?
+  success   Boolean @default(true)
+  reason    String? // alasan gagal, mis. "INVALID_PASSWORD"
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("login_histories")
 }

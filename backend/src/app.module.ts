@@ -14,6 +14,9 @@ import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 
 import { DatabaseModule } from './database/database.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
+import { RolesGuard } from './modules/auth/guards/roles.guard';
 
 @Module({
   imports: [
@@ -34,20 +37,20 @@ import { DatabaseModule } from './database/database.module';
       ],
     }),
 
-    // Database (Prisma) tersedia secara global
-    DatabaseModule,
+    // Modul fitur tahap 1
+    AuthModule,
 
-    // TODO Tahap 1 MVP: AuthModule, UsersModule, RolesModule,
-    // PermissionsModule, JobSeekersModule, CompaniesModule,
-    // JobsModule, ApplicationsModule, FilesModule, DashboardModule,
-    // AuditLogsModule, dll. akan ditambahkan secara bertahap.
+    // TODO: UsersModule, RolesModule, PermissionsModule, JobSeekersModule,
+    // CompaniesModule, JobsModule, ApplicationsModule, FilesModule,
+    // DashboardModule, AuditLogsModule, dll. ditambahkan bertahap.
   ],
   providers: [
-    // Mendaftarkan ThrottlerGuard sebagai guard global
-    {
-      provide: APP_GUARD,
-      useClass: ThrottlerGuard,
-    },
+    // Rate limit global
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    // JWT global: semua endpoint butuh token kecuali ditandai @Public()
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    // RBAC global: aktif bila handler punya @Roles(...)
+    { provide: APP_GUARD, useClass: RolesGuard },
   ],
 })
 export class AppModule {}
