@@ -33,6 +33,8 @@ mkdir -p .tmp_backup
 for f in pubspec.yaml analysis_options.yaml .gitignore .env.example; do
   [[ -f "$f" ]] && cp "$f" ".tmp_backup/$f"
 done
+# lib/ sudah berisi kode Sulbar Kerja — backup penuh lalu restore
+[[ -d "lib" ]] && cp -r lib .tmp_backup/lib
 
 echo "==> Menjalankan flutter create"
 flutter create \
@@ -46,6 +48,10 @@ echo "==> Restore file kustom"
 for f in pubspec.yaml analysis_options.yaml .gitignore .env.example; do
   [[ -f ".tmp_backup/$f" ]] && cp ".tmp_backup/$f" "$f"
 done
+if [[ -d ".tmp_backup/lib" ]]; then
+  rm -rf lib
+  cp -r .tmp_backup/lib lib
+fi
 rm -rf .tmp_backup
 
 echo "==> flutter pub get"

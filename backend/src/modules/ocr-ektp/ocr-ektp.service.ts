@@ -223,15 +223,28 @@ export class OcrEktpService {
           rejectionReason: null,
         },
       });
-      // set identityVerified pada JobSeeker (jika ada) & isi NIK bila kosong
-      await tx.jobSeeker.updateMany({
-        where: { userId: row.userId, deletedAt: null },
-        data: {
-          identityVerified: true,
-          nik: existing.nik ?? undefined,
-        } as unknown as Prisma.JobSeekerUpdateManyMutationInput,
-      });
-      return row;
+      // set identityVerified pada JobSeeker (jika ada) & isi NIK bila kosong.
+      // NIK di ocr_ektp_results bisa hasil mock/OCR yang bertabrakan dengan
+      // NIK job_seeker lain (unique constraint) — bila collision, verifikasi
+      // tetap sukses namun NIK tidak di-copy (dicatat lewat metadata audit).
+      let nikApplied = false;
+      try {
+        await tx.jobSeeker.updateMany({
+          where: { userId: row.userId, deletedAt: null },
+          data: {
+            identityVerified: true,
+            ...(existing.nik ? { nik: existing.nik } : {}),
+          },
+        });
+        nikApplied = !!existing.nik;
+      } catch (e) {
+        // P2002 (unique) atau P2025 (record tidak ada) — abaikan; retry tanpa NIK
+        await tx.jobSeeker.updateMany({
+          where: { userId: row.userId, deletedAt: null },
+          data: { identityVerified: true },
+        });
+      }
+      return { row, nikApplied };
     });
 
     await this.audit.write({
@@ -243,9 +256,13 @@ export class OcrEktpService {
       entityId: id,
       ipAddress: ctx.ipAddress,
       userAgent: ctx.userAgent,
-      metadata: { targetUserId: existing.userId, note: note ?? null },
+      metadata: {
+        targetUserId: existing.userId,
+        note: note ?? null,
+        nikApplied: updated.nikApplied,
+      },
     });
-    return toOcrResultDto(updated, true);
+    return toOcrResultDto(updated.row, true);
   }
 
   async reject(
