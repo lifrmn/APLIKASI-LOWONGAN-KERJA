@@ -6,7 +6,7 @@
 # =====================================================
 
 # ---------- Stage 1: build ----------
-FROM node:20-alpine AS builder
+FROM node:26-alpine AS builder
 
 WORKDIR /app
 
@@ -32,7 +32,7 @@ RUN npm prune --omit=dev
 
 
 # ---------- Stage 2: runtime ----------
-FROM node:20-alpine AS runner
+FROM node:26-alpine AS runner
 
 # tini untuk PID 1 yang proper (graceful shutdown)
 RUN apk add --no-cache tini
