@@ -14,6 +14,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 
 import { DatabaseModule } from './database/database.module';
+import { AiModule } from './modules/ai/ai.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { RolesGuard } from './modules/auth/guards/roles.guard';
@@ -65,6 +66,7 @@ import { UsersModule } from './modules/users/users.module';
     DashboardModule,
     ReportsModule,
     AuditLogsModule,
+    AiModule,
   ],
   providers: [
     // Rate limit global

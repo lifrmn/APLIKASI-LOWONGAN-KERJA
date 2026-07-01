@@ -286,6 +286,9 @@ model JobSeeker {
   profilePhotoFileId String?
   profilePhotoFile   UploadedFile? @relation("JobSeekerPhoto", fields: [profilePhotoFileId], references: [id], onDelete: SetNull)
 
+  /// Flag identitas terverifikasi (di-set true saat OCR e-KTP disetujui admin).
+  identityVerified Boolean @default(false)
+
   educations   EducationHistory[]
   experiences  WorkExperience[]
   skills       JobSeekerSkill[]
