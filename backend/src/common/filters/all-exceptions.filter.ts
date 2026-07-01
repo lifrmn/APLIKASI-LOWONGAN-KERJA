@@ -25,12 +25,8 @@ import { error as toErrorResponse } from '../utils/api-response.util';
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
   private readonly logger = new Logger(AllExceptionsFilter.name);
+  private readonly isProd = process.env.NODE_ENV === 'production';
 
-  /**
-   * catch()
-   * Dipanggil otomatis oleh Nest untuk setiap exception yang tidak
-   * tertangani di controller / service.
-   */
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
@@ -38,7 +34,6 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     const { statusCode, message, code, details } = this.normalize(exception);
 
-    // Log error di sisi server (selalu dicatat, termasuk stack jika ada)
     if (statusCode >= HttpStatus.INTERNAL_SERVER_ERROR) {
       this.logger.error(
         `[${request.method} ${request.url}] ${message}`,
@@ -48,9 +43,15 @@ export class AllExceptionsFilter implements ExceptionFilter {
       this.logger.warn(`[${request.method} ${request.url}] ${message}`);
     }
 
+    // Di produksi: JANGAN kirim `details` untuk 5xx (cegah stack/meta bocor).
+    // Untuk 4xx tetap dikirim (validation errors berguna bagi klien).
+    const safeDetails = this.isProd && statusCode >= HttpStatus.INTERNAL_SERVER_ERROR
+      ? undefined
+      : details;
+
     response
       .status(statusCode)
-      .json(toErrorResponse(message, statusCode, code, request.url, details));
+      .json(toErrorResponse(message, statusCode, code, request.url, safeDetails));
   }
 
   /**
@@ -105,7 +106,16 @@ export class AllExceptionsFilter implements ExceptionFilter {
       };
     }
 
-    // --- 4. Error JS biasa / unknown ---
+    // --- 4. SyntaxError body JSON rusak (dari express.json parser) ---
+    if (exception instanceof SyntaxError && 'body' in (exception as unknown as Record<string, unknown>)) {
+      return {
+        statusCode: HttpStatus.BAD_REQUEST,
+        message: 'Request body bukan JSON valid',
+        code: 'INVALID_JSON',
+      };
+    }
+
+    // --- 5. Error JS biasa / unknown ---
     if (exception instanceof Error) {
       return {
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,

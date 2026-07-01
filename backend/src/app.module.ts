@@ -24,6 +24,7 @@ import { ChatModule } from './modules/chat/chat.module';
 import { CompaniesModule } from './modules/companies/companies.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { FilesModule } from './modules/files/files.module';
+import { HealthModule } from './modules/health/health.module';
 import { JobSeekersModule } from './modules/job-seekers/job-seekers.module';
 import { JobsModule } from './modules/jobs/jobs.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
@@ -70,6 +71,7 @@ import { UsersModule } from './modules/users/users.module';
     AuditLogsModule,
     AiModule,
     OcrEktpModule,
+    HealthModule,
   ],
   providers: [
     // Rate limit global

@@ -258,7 +258,25 @@ export class AuthService {
     const tokenHash = this.hashToken(refreshToken);
     const stored = await this.prisma.refreshToken.findUnique({ where: { tokenHash } });
 
-    if (!stored || stored.revokedAt || stored.expiresAt < new Date()) {
+    // -- Reuse-detection: token yg sudah revoked dipakai lagi berarti DICURI.
+    //    Cabut SELURUH refresh token milik user (logout everywhere) + audit.
+    if (stored && stored.revokedAt) {
+      await this.prisma.refreshToken.updateMany({
+        where: { userId: stored.userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      await this.audit.write({
+        userId: stored.userId,
+        action: 'REFRESH_TOKEN_REUSE',
+        module: 'AUTH',
+        description: 'Refresh token dipakai ulang setelah rotasi — semua sesi dicabut',
+        ipAddress: ctx.ipAddress,
+        userAgent: ctx.userAgent,
+      });
+      throw new UnauthorizedException('Refresh token sudah tidak berlaku');
+    }
+
+    if (!stored || stored.expiresAt < new Date()) {
       throw new UnauthorizedException('Refresh token sudah tidak berlaku');
     }
     if (stored.userId !== payload.sub) {
