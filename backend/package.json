@@ -22,7 +22,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
-    "prisma:seed": "ts-node prisma/seed.ts"
+    "prisma:seed": "ts-node prisma/seed.ts",
+    "prisma:seed:dummy": "ts-node prisma/seed-dummy.ts"
   },
   "dependencies": {
     "@nestjs/common": "^10.3.0",
@@ -82,6 +83,10 @@
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.3.3"
+  },
+  "optionalDependencies": {
+    "firebase-admin": "^12.3.0",
+    "tesseract.js": "^5.1.0"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"

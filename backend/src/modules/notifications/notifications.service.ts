@@ -35,6 +35,8 @@ import { CreateBulkNotificationDto } from './dto/create-bulk-notification.dto';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { CreateRoleNotificationDto } from './dto/create-role-notification.dto';
 import { FilterNotificationDto } from './dto/filter-notification.dto';
+import { FcmService } from './fcm.service';
+import { NotificationsGateway } from './notifications.gateway';
 
 const ADMIN_ROLES = new Set(['SUPER_ADMIN', 'ADMIN_DINAS']);
 const ANNOUNCEMENT_ROLES = new Set(['SUPER_ADMIN', 'ADMIN_DINAS']);
@@ -54,6 +56,8 @@ export class NotificationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditLogsService,
+    private readonly gateway: NotificationsGateway,
+    private readonly fcm: FcmService,
   ) {}
 
   // ============================================================
@@ -460,8 +464,22 @@ export class NotificationsService {
    */
   private dispatchRealtime(notif: Notification): void {
     this.logger.debug(`Dispatch notif [${notif.type}] → user=${notif.userId} id=${notif.id}`);
-    // TODO: gateway.emitToUser(notif.userId, 'notification:new', notif);
-    // TODO: fcm.sendToUser(notif.userId, { title: notif.title, body: notif.message ?? '' });
+    try {
+      this.gateway.emitToUser(notif.userId, 'notification:new', {
+        id: notif.id,
+        type: notif.type,
+        title: notif.title,
+        message: notif.message,
+        data: notif.data,
+        createdAt: notif.createdAt,
+      });
+    } catch (e) {
+      this.logger.warn(`WS emit gagal: ${(e as Error).message}`);
+    }
+    // FCM: no-op bila belum dikonfigurasi (lihat FcmService.onModuleInit).
+    // Untuk mengirim, backend perlu menyimpan device token pengguna (tabel
+    // user_devices) — belum di-schedule pada MVP. Setelah tabel ada, fetch
+    // tokens dan panggil this.fcm.sendToTokens(tokens, {...}).
   }
 
   // ============================================================
