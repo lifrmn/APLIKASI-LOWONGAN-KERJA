@@ -586,9 +586,6 @@ export class JobsService {
 
     if (activeOnly) {
       where.status = JobStatus.PUBLISHED;
-      where.OR = [
-        ...((where.OR as Prisma.JobWhereInput[]) ?? []),
-      ];
       // deadline kosong atau di masa depan
       where.AND = [
         { OR: [{ deadline: null }, { deadline: { gt: new Date() } }] },

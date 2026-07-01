@@ -53,6 +53,7 @@ import { UsersModule } from './modules/users/users.module';
     }),
 
     // Modul fitur tahap 1
+    DatabaseModule,
     AuthModule,
     UsersModule,
     RolesModule,

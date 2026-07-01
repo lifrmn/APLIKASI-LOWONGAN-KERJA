@@ -84,6 +84,10 @@ model User {
   phoneVerifiedAt DateTime?
   lastLoginAt     DateTime?
 
+  // Brute-force protection
+  loginFailedCount Int       @default(0)
+  lockedUntil      DateTime?
+
   refreshTokens    RefreshToken[]
   otpCodes         OtpCode[]
   auditLogs        AuditLog[]

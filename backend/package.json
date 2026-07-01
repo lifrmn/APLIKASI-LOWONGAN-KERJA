@@ -85,8 +85,8 @@
     "typescript": "^5.3.3"
   },
   "optionalDependencies": {
-    "firebase-admin": "^12.3.0",
-    "tesseract.js": "^5.1.0"
+    "firebase-admin": "^12.7.0",
+    "tesseract.js": "^5.1.1"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"

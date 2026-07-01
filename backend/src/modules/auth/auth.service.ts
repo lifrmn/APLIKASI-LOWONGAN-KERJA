@@ -18,11 +18,12 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { OtpPurpose, User, UserStatus } from '@prisma/client';
+import { OtpPurpose, Prisma, User, UserStatus } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { createHash, randomInt } from 'crypto';
 
 import { PrismaService } from '../../database/prisma.service';
+import { AuditLogsService } from '../../common/services/audit-logs.service';
 import { JwtPayload } from './strategies/jwt.strategy';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -40,6 +41,15 @@ export interface AuthTokens {
   refreshToken: string;
   tokenType: 'Bearer';
   expiresIn: string;
+}
+
+export interface AuthLoginResult extends AuthTokens {
+  user: {
+    id: string;
+    email: string;
+    fullName: string;
+    role: string;
+  };
 }
 
 /**
@@ -60,6 +70,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
+    private readonly audit: AuditLogsService,
   ) {}
 
   // ============================================================
@@ -109,28 +120,102 @@ export class AuthService {
    * Validasi kredensial → terbitkan access & refresh token,
    * simpan hash refresh token ke DB, catat audit log USER_LOGIN.
    */
-  async login(dto: LoginDto, ctx: RequestContext): Promise<AuthTokens> {
+  async login(dto: LoginDto, ctx: RequestContext): Promise<AuthLoginResult> {
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
       include: { role: true },
     });
 
-    if (!user || user.deletedAt) throw new UnauthorizedException('Email atau password salah');
-    if (user.status === 'BANNED') throw new UnauthorizedException('Akun diblokir');
+    // Kredensial invalid — pesan seragam supaya tidak jadi user-enumeration.
+    const invalidMsg = 'Email atau password salah';
+
+    if (!user || user.deletedAt) {
+      // Tetap konsumsi waktu bcrypt untuk mempersempit timing-attack.
+      await bcrypt.compare(dto.password, '$2b$10$invalidsaltinvalidsaltinvalidsaltinva');
+      await this.writeLoginHistory(null, dto.email, false, 'USER_NOT_FOUND', ctx);
+      throw new UnauthorizedException(invalidMsg);
+    }
+    if (user.status === 'BANNED') {
+      await this.writeLoginHistory(user.id, dto.email, false, 'BANNED', ctx);
+      throw new UnauthorizedException('Akun diblokir');
+    }
+
+    // Lock aktif → tolak sekalipun password benar.
+    if (user.lockedUntil && user.lockedUntil.getTime() > Date.now()) {
+      const seconds = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 1000);
+      await this.writeLoginHistory(user.id, dto.email, false, 'LOCKED', ctx);
+      throw new UnauthorizedException(
+        `Akun dikunci sementara karena percobaan login gagal. Coba lagi dalam ${seconds} detik.`,
+      );
+    }
 
     const match = await bcrypt.compare(dto.password, user.password);
-    if (!match) throw new UnauthorizedException('Email atau password salah');
+    if (!match) {
+      const nextCount = user.loginFailedCount + 1;
+      const MAX = Number(process.env.LOGIN_MAX_ATTEMPTS ?? 5);
+      const LOCK_MINUTES = Number(process.env.LOGIN_LOCK_MINUTES ?? 15);
 
+      const patch: Prisma.UserUpdateInput = { loginFailedCount: nextCount };
+      if (nextCount >= MAX) {
+        patch.lockedUntil = new Date(Date.now() + LOCK_MINUTES * 60_000);
+        patch.loginFailedCount = 0;
+      }
+      await this.prisma.user.update({ where: { id: user.id }, data: patch });
+
+      await this.writeLoginHistory(user.id, dto.email, false, 'INVALID_PASSWORD', ctx);
+      await this.audit.write({
+        userId: user.id,
+        action: 'USER_LOGIN_FAILED',
+        module: 'AUTH',
+        description: `Login gagal (attempt ${nextCount}/${MAX})`,
+        ipAddress: ctx.ipAddress,
+        userAgent: ctx.userAgent,
+      });
+      throw new UnauthorizedException(invalidMsg);
+    }
+
+    // Sukses → reset counter, cabut lock.
     const tokens = await this.issueTokens(user.id, user.email, user.role.name);
     await this.persistRefreshToken(user.id, tokens.refreshToken, ctx);
-
     await this.prisma.user.update({
       where: { id: user.id },
-      data: { lastLoginAt: new Date() },
+      data: { lastLoginAt: new Date(), loginFailedCount: 0, lockedUntil: null },
     });
 
+    await this.writeLoginHistory(user.id, dto.email, true, null, ctx);
     await this.writeAudit(user.id, 'USER_LOGIN', 'User', user.id, ctx);
-    return tokens;
+    return {
+      ...tokens,
+      user: {
+        id: user.id,
+        email: user.email,
+        fullName: user.fullName,
+        role: user.role.name,
+      },
+    };
+  }
+
+  private async writeLoginHistory(
+    userId: string | null,
+    _email: string,
+    success: boolean,
+    reason: string | null,
+    ctx: RequestContext,
+  ): Promise<void> {
+    if (!userId) return;
+    try {
+      await this.prisma.loginHistory.create({
+        data: {
+          userId,
+          ipAddress: ctx.ipAddress ?? null,
+          userAgent: ctx.userAgent ?? null,
+          success,
+          reason,
+        },
+      });
+    } catch {
+      // best-effort
+    }
   }
 
   // ============================================================
