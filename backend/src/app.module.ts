@@ -32,6 +32,7 @@ import { OcrEktpModule } from './modules/ocr-ektp/ocr-ektp.module';
 import { PermissionsModule } from './modules/permissions/permissions.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { RolesModule } from './modules/roles/roles.module';
+import { SecurityModule } from './modules/security/security.module';
 import { UsersModule } from './modules/users/users.module';
 
 @Module({
@@ -72,6 +73,7 @@ import { UsersModule } from './modules/users/users.module';
     AiModule,
     OcrEktpModule,
     HealthModule,
+    SecurityModule,
   ],
   providers: [
     // Rate limit global

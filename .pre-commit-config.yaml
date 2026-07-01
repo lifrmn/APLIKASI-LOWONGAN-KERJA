@@ -1,0 +1,36 @@
+# =====================================================
+# File: .pre-commit-config.yaml
+# Fungsi:
+#   Menjalankan hook keamanan sebelum commit di local:
+#     - gitleaks   : deteksi secret (API key, JWT, password) yang bocor.
+#     - eol/mixed  : basic hygiene.
+#
+# Instalasi:
+#   pipx install pre-commit  (atau: pip install --user pre-commit)
+#   pre-commit install
+#
+# Setelah `pre-commit install`, hook otomatis jalan tiap `git commit`.
+# Manual scan:
+#   pre-commit run --all-files
+# =====================================================
+
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.4
+    hooks:
+      - id: gitleaks
+        name: Detect hardcoded secrets (gitleaks)
+        args: ['--config', '.gitleaks.toml', '--verbose']
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: check-added-large-files
+        args: ['--maxkb=1024']
+      - id: check-yaml
+      - id: check-json
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: detect-private-key
+      - id: no-commit-to-branch
+        args: ['--branch', 'main', '--branch', 'master']

@@ -1,0 +1,11 @@
+# ZAP rules override — set beberapa alert menjadi IGNORE/WARN
+# untuk mengurangi false-positive pada API JSON pemerintah.
+# Format:  <ruleId>\t<action>\t<comment>
+#
+# Actions: IGNORE | WARN | FAIL
+10015	WARN	Incomplete or No Cache-control (API JSON — expected)
+10021	WARN	X-Content-Type-Options — sudah diset via helmet
+10038	WARN	CSP Header — sudah diset via helmet
+10096	WARN	Timestamp Disclosure — createdAt ISO adalah bagian dari API
+90005	IGNORE	Sec-GPC — tidak relevan API JSON
+10063	IGNORE	Permissions Policy — sudah diset via helmet + nginx

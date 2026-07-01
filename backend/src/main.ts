@@ -70,6 +70,8 @@ async function bootstrap(): Promise<void> {
               'object-src': ["'none'"],
               'base-uri': ["'self'"],
               'form-action': ["'self'"],
+              // Kirim laporan pelanggaran CSP ke endpoint internal.
+              'report-uri': ['/api/v1/csp-report'],
             },
           }
         : false,
@@ -86,7 +88,11 @@ async function bootstrap(): Promise<void> {
 
   // --- Body parser dengan LIMIT ketat (default 1MB) ---
   const express = require('express') as typeof import('express');
-  app.use(express.json({ limit: bodyLimit }));
+  app.use(express.json({
+    limit: bodyLimit,
+    // Terima juga content-type CSP report supaya /csp-report bisa parse body.
+    type: ['application/json', 'application/csp-report', 'application/reports+json'],
+  }));
   app.use(express.urlencoded({ extended: true, limit: bodyLimit }));
 
   app.use(compression());

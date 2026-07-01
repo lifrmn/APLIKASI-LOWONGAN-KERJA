@@ -1,0 +1,72 @@
+# =====================================================
+# File: .gitleaks.toml
+# Fungsi:
+#   Konfigurasi Gitleaks untuk deteksi secret di codebase.
+#   Extends default ruleset + allowlist untuk file dummy/env.example.
+# =====================================================
+
+title = "Sulbar Kerja — Gitleaks Config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Files & path yang aman untuk memuat pola mirip-secret"
+paths = [
+  # Contoh env & template
+  '''\.env\.example$''',
+  '''backend/\.env\.example$''',
+  '''admin/\.env\.example$''',
+  '''mobile/\.env\.example$''',
+  '''deploy/\.env\.production\.example$''',
+
+  # Dokumen & aset non-sensitif
+  '''legal/.*\.md$''',
+  '''.*\.snapshot$''',
+  '''.*/node_modules/.*''',
+  '''.*/dist/.*''',
+  '''.*/build/.*''',
+  '''.*\.min\.(js|css)$''',
+
+  # Sample/dummy fixtures untuk testing
+  '''backend/prisma/seed(-dummy)?\.ts$''',
+]
+
+# Placeholder yang sering muncul di README / docs / migration files
+regexTarget = "match"
+regexes = [
+  '''ubah_dengan_secret_acak''',
+  '''ganti_di_produksi''',
+  '''example\.com''',
+  '''password[:=]\s*Password!1''',
+  '''password[:=]\s*SulbarKerja!2026''',
+]
+
+# ----- Custom rules tambahan (di luar default) -----
+
+[[rules]]
+id = "generic-jwt-in-source"
+description = "Kemungkinan JWT hardcoded di source"
+regex = '''eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}'''
+tags = ["jwt"]
+[rules.allowlist]
+paths = ['''.*\.md$''', '''.*\.example$''', '''.*\.snapshot$''']
+
+[[rules]]
+id = "firebase-service-account"
+description = "Service account Firebase (private_key)"
+regex = '''"private_key"\s*:\s*"-----BEGIN (RSA )?PRIVATE KEY-----'''
+tags = ["firebase", "gcp"]
+
+[[rules]]
+id = "database-url-with-password"
+description = "DATABASE_URL yang mengandung password bukan placeholder"
+regex = '''postgres(?:ql)?://[^:\s]+:[^@\s]{6,}@[a-zA-Z0-9\.\-]+'''
+tags = ["db"]
+[rules.allowlist]
+regexes = [
+  # placeholder umum di env.example
+  '''postgres:postgres@localhost''',
+  '''postgres:postgres@postgres''',
+  '''USER:PASSWORD''',
+]

@@ -1,0 +1,69 @@
+# =====================================================
+# File: .github/dependabot.yml
+# Fungsi:
+#   Auto-update dependency untuk mengurangi CVE window.
+#   Update dikelompokkan agar tidak spam PR.
+# =====================================================
+
+version: 2
+updates:
+  # ---- Backend (npm) ----
+  - package-ecosystem: 'npm'
+    directory: '/backend'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+      time: '02:00'
+      timezone: 'Asia/Makassar'
+    open-pull-requests-limit: 5
+    labels: ['dependencies', 'backend']
+    groups:
+      nestjs:
+        patterns: ['@nestjs/*']
+      prisma:
+        patterns: ['prisma', '@prisma/*']
+      dev-tools:
+        dependency-type: 'development'
+    ignore:
+      # Skip major bump — review manual
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
+
+  # ---- Admin (npm) ----
+  - package-ecosystem: 'npm'
+    directory: '/admin'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+      time: '02:00'
+      timezone: 'Asia/Makassar'
+    open-pull-requests-limit: 5
+    labels: ['dependencies', 'admin']
+    groups:
+      react:
+        patterns: ['react', 'react-dom', 'react-router-dom']
+      tanstack:
+        patterns: ['@tanstack/*']
+
+  # ---- Mobile (Flutter pub) ----
+  # NB: dependabot belum resmi mendukung pub.dev; gunakan action lain
+  # (renovate) bila perlu update Flutter deps otomatis.
+
+  # ---- GitHub Actions ----
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+    labels: ['dependencies', 'ci']
+
+  # ---- Docker base images ----
+  - package-ecosystem: 'docker'
+    directory: '/backend'
+    schedule:
+      interval: 'weekly'
+    labels: ['dependencies', 'docker']
+  - package-ecosystem: 'docker'
+    directory: '/admin'
+    schedule:
+      interval: 'weekly'
+    labels: ['dependencies', 'docker']
