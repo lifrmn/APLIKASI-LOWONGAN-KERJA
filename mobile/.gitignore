@@ -1,0 +1,38 @@
+# === Flutter/Dart ===
+build/
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+.flutter-plugins
+.flutter-plugins-dependencies
+*.iml
+
+# === Platform-specific caches ===
+.idea/
+.vscode/
+android/.gradle/
+android/local.properties
+android/app/debug/
+android/app/release/
+android/app/profile/
+android/**/GeneratedPluginRegistrant.*
+android/key.jks
+android/*.jks
+android/key.properties
+ios/Pods/
+ios/.symlinks/
+ios/Runner.xcworkspace/xcuserdata/
+ios/Runner.xcodeproj/xcuserdata/
+ios/Runner.xcodeproj/project.xcworkspace/xcuserdata/
+ios/Flutter/Flutter.framework/
+ios/Flutter/Flutter.podspec
+
+# === Secrets ===
+.env
+.env.*
+!.env.example
+
+# === Coverage / test artifacts ===
+coverage/
+*.log

@@ -161,7 +161,7 @@ export class OcrEktpService {
       await this.logSensitiveRead(actor, ctx, `List OCR (n=${rows.length})`);
     }
     const data = rows.map((r) => toOcrResultDto(r, canSeeFull));
-    return { data, meta: buildPaginationMeta(params, total) };
+    return { data, meta: buildPaginationMeta(total, params.page, params.limit) };
   }
 
   /**

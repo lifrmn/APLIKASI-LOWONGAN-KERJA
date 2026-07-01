@@ -1,0 +1,10 @@
+# ============================================================
+# Template key.properties untuk Android release signing.
+# JANGAN commit key.properties ATAU key.jks yang berisi kredensial nyata.
+# File ini hanya contoh — value asli akan dibuat oleh
+# scripts/generate_keystore.sh.
+# ============================================================
+storePassword=GANTI_INI
+keyPassword=GANTI_INI
+keyAlias=upload
+storeFile=key.jks

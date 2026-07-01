@@ -27,6 +27,7 @@ import { FilesModule } from './modules/files/files.module';
 import { JobSeekersModule } from './modules/job-seekers/job-seekers.module';
 import { JobsModule } from './modules/jobs/jobs.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { OcrEktpModule } from './modules/ocr-ektp/ocr-ektp.module';
 import { PermissionsModule } from './modules/permissions/permissions.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { RolesModule } from './modules/roles/roles.module';
@@ -67,6 +68,7 @@ import { UsersModule } from './modules/users/users.module';
     ReportsModule,
     AuditLogsModule,
     AiModule,
+    OcrEktpModule,
   ],
   providers: [
     // Rate limit global

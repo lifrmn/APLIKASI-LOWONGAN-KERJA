@@ -1,0 +1,95 @@
+name: sulbar_kerja
+description: "Sulbar Kerja — Aplikasi Bursa Kerja Digital Provinsi Sulawesi Barat."
+# BUAT applicationId Android = id.go.sulbar.kerja (lihat android/app/build.gradle)
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+  flutter: ">=3.22.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.6
+
+  # State & DI
+  flutter_riverpod: ^2.5.1
+  riverpod_annotation: ^2.3.5
+
+  # Routing
+  go_router: ^14.2.0
+
+  # Networking
+  dio: ^5.5.0
+  pretty_dio_logger: ^1.4.0
+
+  # Auth storage
+  flutter_secure_storage: ^9.2.2
+
+  # File / camera / picker
+  image_picker: ^1.1.2
+  file_picker: ^8.0.6
+
+  # UI helpers
+  cached_network_image: ^3.3.1
+  flutter_svg: ^2.0.10+1
+  intl: ^0.19.0
+
+  # Env & config
+  flutter_dotenv: ^5.1.0
+
+  # Utils
+  freezed_annotation: ^2.4.4
+  json_annotation: ^4.9.0
+  connectivity_plus: ^6.0.3
+  url_launcher: ^6.3.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  build_runner: ^2.4.11
+  freezed: ^2.5.7
+  json_serializable: ^6.8.0
+  riverpod_generator: ^2.4.3
+
+  # Aset / branding
+  flutter_launcher_icons: ^0.13.1
+  flutter_native_splash: ^2.4.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/icon/
+    - assets/splash/
+    - .env
+
+# ============================================================
+#  Launcher icons (jalankan: `dart run flutter_launcher_icons`)
+#  Letakkan file 1024x1024 PNG di assets/icon/app_icon.png
+# ============================================================
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/icon/app_icon.png"
+  min_sdk_android: 23
+  adaptive_icon_background: "#0F5CAB"
+  adaptive_icon_foreground: "assets/icon/app_icon_foreground.png"
+  remove_alpha_ios: true
+  web:
+    generate: false
+
+# ============================================================
+#  Native splash (jalankan: `dart run flutter_native_splash:create`)
+# ============================================================
+flutter_native_splash:
+  color: "#0F5CAB"
+  image: assets/splash/splash_logo.png
+  color_dark: "#0B2544"
+  image_dark: assets/splash/splash_logo.png
+  android_12:
+    color: "#0F5CAB"
+    image: assets/splash/splash_logo_android12.png
+    color_dark: "#0B2544"
+  fullscreen: false

@@ -1,0 +1,65 @@
+// ============================================================
+// File: mobile/android/app/build.gradle.signing.snippet
+// Fungsi:
+//   Cuplikan konfigurasi signing Android yang HARUS di-MERGE
+//   ke file android/app/build.gradle (Groovy) setelah `flutter create`.
+//   Ini bukan file build yang aktif — Gradle mengabaikannya
+//   karena namanya bukan `build.gradle`.
+//
+// LANGKAH MERGE:
+//   1) Buka android/app/build.gradle
+//   2) Tambahkan blok #1 di paling atas file (setelah plugin block).
+//   3) Ganti blok `defaultConfig { ... }` dengan #2 (applicationId final).
+//   4) Ganti/isi blok `signingConfigs` & `buildTypes` dengan #3.
+// ============================================================
+
+// ---------- #1. Load key.properties ----------
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file('key.properties')
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
+// ---------- #2. defaultConfig ----------
+android {
+    namespace = "id.go.sulbar.kerja"
+    compileSdk = 34
+    ndkVersion = flutter.ndkVersion
+
+    defaultConfig {
+        applicationId = "id.go.sulbar.kerja"     // package name di Play Store
+        minSdk = 23                              // Android 6.0 keatas
+        targetSdk = 34
+        versionCode = flutter.versionCode
+        versionName = flutter.versionName
+        multiDexEnabled = true
+    }
+
+    // ---------- #3. signing ----------
+    signingConfigs {
+        release {
+            keyAlias = keystoreProperties['keyAlias']
+            keyPassword = keystoreProperties['keyPassword']
+            storeFile = keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null
+            storePassword = keystoreProperties['storePassword']
+        }
+    }
+
+    buildTypes {
+        release {
+            // Jika keystore belum dibuat (mis. CI branch feature), fallback debug agar build tetap jalan.
+            signingConfig keystoreProperties['storeFile'] ? signingConfigs.release : signingConfigs.debug
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+}
