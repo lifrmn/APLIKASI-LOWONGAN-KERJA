@@ -28,7 +28,7 @@ RUN npm run build
 
 
 # ---------- Stage 2: runtime ----------
-FROM nginx:1.27-alpine AS runner
+FROM nginx:1.31-alpine AS runner
 
 # Hapus default config Nginx, pakai konfigurasi SPA kita
 RUN rm /etc/nginx/conf.d/default.conf
